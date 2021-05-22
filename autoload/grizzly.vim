@@ -20,10 +20,15 @@ endfunction
 function! s:adjust_pos(winid) abort
 	let curpos = term_getcursor(bufnr())
 	let winpos = win_screenpos(winnr())
+	let col = winpos[1] - 1 + s:prompt_length()
+	let line = winpos[0] + curpos[0]
+	if &lines < line + winheight(a:winid)
+		let line -= winheight(a:winid) + 1
+	endif
 	call popup_setoptions(a:winid, {
 		\ 'pos' : 'topleft',
-		\ 'line' : winpos[0] + curpos[0],
-		\ 'col' : winpos[1] - 1 + s:prompt_length(),
+		\ 'line' : line,
+		\ 'col' : col,
 		\ })
 endfunction
 
