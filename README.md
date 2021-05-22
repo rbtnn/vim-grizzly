@@ -14,7 +14,7 @@ Use `Ctrl-n` or `Ctrl-p` In a terminal buffer.
 This is a pattern of prompt.  
 
 ### g:grizzly\_history (default: `'~/.grizzly_history'`)
-This is a path to save the histories in a terminal buffer.  
+This is a path to save histories.  
 
 ## Screenshots
 
