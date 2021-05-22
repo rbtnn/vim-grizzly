@@ -1,31 +1,78 @@
 
+let s:complete_winid = get(s:, 'complete_winid', -1)
+let s:complete_t_winid = get(s:, 'complete_t_winid', -1)
+let s:complete_t_cache = get(s:, 'complete_t_cache', { 'key' : '', 'items' : [], })
+
+function! grizzly#complete_t(...) abort
+	try
+		if get(g:, 'grizzly_disable', v:false)
+			return
+		endif
+		call popup_close(s:complete_t_winid)
+		let s:complete_t_winid = -1
+		if -1 != s:complete_winid
+			return
+		endif
+		if &buftype != 'terminal'
+			return
+		endif
+		let input = s:prompt_input(term_getline(bufnr(), '.'))
+		if empty(input)
+			return
+		endif
+		if s:complete_t_cache['key'] != input
+			let s:complete_t_cache['key'] = input
+			let s:complete_t_cache['items'] = s:cmdprompt_suggestions(input)
+		endif
+		if len(s:complete_t_cache['items']) < 1
+			return
+		elseif (len(s:complete_t_cache['items']) == 1) && (s:complete_t_cache['items'][0] == input)
+			return
+		endif
+		let s:complete_t_winid = popup_create(s:complete_t_cache['items'], {})
+		call s:setoptions(s:complete_t_winid)
+	catch
+		echo v:throwpoint
+		echo v:exception
+	endtry
+endfunction
+
 function! grizzly#complete() abort
-	let lines = s:cmdprompt_history()
-	let pattern = s:prompt_input(term_getline(bufnr(), '.'))
-	let items = filter(deepcopy(lines), { i,x -> x =~# pattern })
+	if get(g:, 'grizzly_disable', v:false)
+		return
+	endif
+	let input = s:prompt_input(term_getline(bufnr(), '.'))
+	let items = s:cmdprompt_suggestions(input)
 	if 0 < len(items)
 		call s:settermline(-1, items[0])
 		if 1 < len(items)
-			let winid = popup_menu(items, {
-				\ 'border' : [0,0,0,0],
+			let s:complete_winid = popup_menu(items, {
 				\ 'filter' : function('s:filter'),
-				\ 'minwidth' : &pumwidth,
-				\ 'maxheight' : &pumheight,
+				\ 'callback' : function('s:callback'),
 				\ })
-			call s:adjust_pos(winid)
+			call s:setoptions(s:complete_winid)
 		endif
 	endif
 endfunction
 
-function! s:adjust_pos(winid) abort
+function! s:setoptions(winid) abort
 	let curpos = term_getcursor(bufnr())
 	let winpos = win_screenpos(winnr())
 	let col = winpos[1] - 1 + s:prompt_length()
 	let line = winpos[0] + curpos[0]
-	if &lines < line + winheight(a:winid)
-		let line -= winheight(a:winid) + 1
+	let height = winheight(a:winid)
+	if &lines < line + height
+		let line -= height + 1
+		if line < 0
+			let height += line - 1
+			let line = 1
+		endif
 	endif
 	call popup_setoptions(a:winid, {
+		\ 'minwidth' : &pumwidth,
+		\ 'maxheight' : height,
+		\ 'border' : [ 0, 0, 0, 0],
+		\ 'padding' : [ 0, 1, 0, 1],
 		\ 'pos' : 'topleft',
 		\ 'line' : line,
 		\ 'col' : col,
@@ -46,7 +93,7 @@ function! s:prompt_input(line) abort
 	return trim(matchstr(a:line, s:prompt_pattern()))
 endfunction
 
-function! s:cmdprompt_history() abort
+function! s:cmdprompt_suggestions(input) abort
 	let lines = []
 	let path = expand(get(g:, 'grizzly_history', '~/.grizzly_history'))
 	if filereadable(path)
@@ -64,6 +111,7 @@ function! s:cmdprompt_history() abort
 	endfor
 	call filter(lines, { i,x -> !empty(x) })
 	call writefile(lines, path)
+	call filter(lines, { i,x -> (x =~# a:input) && (x != a:input) })
 	return lines
 endfunction
 
@@ -79,7 +127,7 @@ function! s:settermline(winid, line) abort
 	endif
 	sleep 10m
 	if -1 != a:winid
-		call s:adjust_pos(a:winid)
+		call s:setoptions(a:winid)
 	endif
 	call term_sendkeys(bufnr(), a:line)
 endfunction
@@ -130,5 +178,9 @@ func s:filter(winid, key)
 		return 0
 
 	endif
+endfunction
+
+func s:callback(winid, key)
+	let s:complete_winid = -1
 endfunction
 

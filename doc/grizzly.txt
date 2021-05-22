@@ -1,0 +1,32 @@
+*grizzly.txt*  complete histories and permanently save histories in terminal
+
+Author : rbtnn <naru123456789@gmail.com>
+LICENSE: MIT license (see LICENSE.txt)
+
+CONTENTS                                                     *grizzly-contents*
+
+Variables                |naer-variables|
+
+
+
+==============================================================================
+Variables                                                   *grizzly-variables*
+
+*g:grizzly_prompt_pattern*
+	This is a pattern of prompt.
+	(default: `has('win32') ? '^[A-Z]:\\.*>\zs.*' : '^[\$#]\zs.*'`)
+
+*g:grizzly_history*
+	This is a path to save histories.  
+	(default: `'~/.grizzly_history'`)
+
+*g:grizzly_disable*
+	(default: `v:false`)
+
+*g:grizzlydisable_default_mappings*
+	default: `v:false`)
+
+
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:noet:fen:fdl=0:
