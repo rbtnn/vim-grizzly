@@ -1,11 +1,20 @@
 
 # vim-grizzly
 
-This plugin provides to complete from terminal histories using `+popupwin` feature.  
+This plugin provides to complete from terminal histories using `+popupwin` feature and permanently save your histories.  
+This is useful when your terminal(e.g. cmd.exe) does not permanently save your histories.  
 
 ## Usage
 
 Use `Ctrl-n` or `Ctrl-p` In a terminal buffer.
+
+## Variables
+
+### g:grizzly\_prompt\_pattern (default: `has('win32') ? '^[A-Z]:\\.*>\zs.*' : '^[\$#]\zs.*'`)
+This is a pattern of prompt.  
+
+### g:grizzly\_history (default: `'~/.grizzly_history'`)
+This is a path to save the histories in a terminal buffer.  
 
 ## Screenshots
 
@@ -24,7 +33,6 @@ Plug 'rbtnn/vim-grizzly'
 
 ## Requirements
 * Vim must be compiled with `+popupwin` feature
-* Vim version 8.2.1900 or above
 
 ## License
 Distributed under MIT License. See LICENSE.

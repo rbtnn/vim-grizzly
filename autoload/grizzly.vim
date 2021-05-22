@@ -42,9 +42,14 @@ function! s:prompt_input(line) abort
 endfunction
 
 function! s:cmdprompt_history() abort
-	let lines = getbufline(bufnr(), 1, line('$') - 1)
+	let lines = []
+	let path = expand(get(g:, 'grizzly_history', '~/.grizzly_history'))
+	if filereadable(path)
+		let lines += readfile(path)
+	endif
+	let lines += map(getbufline(bufnr(), 1, line('$') - 1)
 		\ + map(range(1, line('$') - 1), { i,x -> term_getline(bufnr(), x) })
-	call map(lines, { i, x -> s:prompt_input(x) })
+		\ , { i, x -> s:prompt_input(x) })
 	for j in range(len(lines) - 1, 0, -1)
 		for k in range(j - 1, 0, -1)
 			if lines[j] == lines[k]
@@ -53,6 +58,7 @@ function! s:cmdprompt_history() abort
 		endfor
 	endfor
 	call filter(lines, { i,x -> !empty(x) })
+	call writefile(lines, path)
 	return lines
 endfunction
 
