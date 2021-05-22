@@ -9,10 +9,10 @@ Use `Ctrl-n` or `Ctrl-p` In a terminal buffer.
 
 ## Screenshots
 
-__cmd.exe__
+### cmd.exe
 ![](https://raw.githubusercontent.com/rbtnn/vim-grizzly/main/cmd.jpg)
 
-__bash__
+### bash
 ![](https://raw.githubusercontent.com/rbtnn/vim-grizzly/main/bash.jpg)
 
 ## Installation
