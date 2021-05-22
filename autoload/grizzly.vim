@@ -4,7 +4,24 @@ let s:complete_t_winid = get(s:, 'complete_t_winid', -1)
 let s:complete_t_cache = get(s:, 'complete_t_cache', { 'key' : '', 'items' : [], })
 let g:grizzly_history = get(g:, 'grizzly_history', '~/.grizzly_history')
 
-function! grizzly#complete_t(...) abort
+function! grizzly#complete_next() abort
+	call s:complete(v:false)
+endfunction
+
+function! grizzly#complete_prev() abort
+	call s:complete(v:true)
+endfunction
+
+function! grizzly#reset_timer() abort
+	if exists('s:timer')
+		call timer_stop(s:timer)
+	endif
+	if !empty(term_list())
+		let s:timer = timer_start(500, function('s:complete_t'), { 'repeat': -1 })
+	endif
+endfunction
+
+function! s:complete_t(...) abort
 	try
 		if get(g:, 'grizzly_disable', v:false)
 			return
@@ -36,14 +53,6 @@ function! grizzly#complete_t(...) abort
 		echoerr v:throwpoint
 		echoerr v:exception
 	endtry
-endfunction
-
-function! grizzly#complete_next() abort
-	call s:complete(v:false)
-endfunction
-
-function! grizzly#complete_prev() abort
-	call s:complete(v:true)
 endfunction
 
 function! s:complete(bot) abort
@@ -106,24 +115,31 @@ function! s:prompt_input(line) abort
 endfunction
 
 function! s:cmdprompt_suggestions(input) abort
-	let lines = []
+	let caches = []
 	if filereadable(expand(g:grizzly_history))
-		let lines += readfile(expand(g:grizzly_history))
+		let caches = readfile(expand(g:grizzly_history))
 	endif
-	let lines += map(getbufline(bufnr(), 1, line('$') - 1)
+
+	let lines = getbufline(bufnr(), 1, line('$') - 1)
 		\ + map(range(1, line('$') - 1), { i,x -> term_getline(bufnr(), x) })
-		\ , { i, x -> s:prompt_input(x) })
-	for j in range(len(lines) - 1, 0, -1)
+	call map(lines, { i, x -> s:prompt_input(x) })
+	if -1 == index(caches, a:input)
+		call filter(lines, { i,x -> (x != a:input) })
+	endif
+
+	let merge_lines = caches + lines
+	for j in range(len(merge_lines) - 1, 0, -1)
 		for k in range(j - 1, 0, -1)
-			if lines[j] == lines[k]
-				let lines[k] = ''
+			if merge_lines[j] == merge_lines[k]
+				let merge_lines[k] = ''
 			endif
 		endfor
 	endfor
-	call filter(lines, { i,x -> !empty(x) })
-	call writefile(lines, expand(g:grizzly_history))
-	call filter(lines, { i,x -> (-1 != stridx(x, a:input)) && (x != a:input) })
-	return lines
+
+	call filter(merge_lines, { i,x -> !empty(x) && (x !~# '^cd ') })
+	call writefile(merge_lines, expand(g:grizzly_history))
+	call filter(merge_lines, { i,x -> -1 != stridx(x, a:input) })
+	return merge_lines
 endfunction
 
 function! s:setcursor(winid, lnum) abort
@@ -166,6 +182,7 @@ func s:filter(winid, key)
 
 	elseif n == 13
 		" Enter
+		call popup_close(a:winid)
 		return popup_filter_menu(a:winid, "\<Cr>")
 
 	elseif (n == 9) || (n == 14)

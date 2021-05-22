@@ -9,5 +9,8 @@ if has('popupwin')
 endif
 
 if exists('*timer_start')
-	call timer_start(500, 'grizzly#complete_t', { 'repeat': -1 })
+	augroup grizzly
+		autocmd!
+		autocmd TerminalOpen * :call grizzly#reset_timer()
+	augroup END
 endif
