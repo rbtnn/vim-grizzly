@@ -2,6 +2,7 @@
 let s:complete_winid = get(s:, 'complete_winid', -1)
 let s:complete_t_winid = get(s:, 'complete_t_winid', -1)
 let s:complete_t_cache = get(s:, 'complete_t_cache', { 'key' : '', 'items' : [], })
+let g:grizzly_history = get(g:, 'grizzly_history', '~/.grizzly_history')
 
 function! grizzly#complete_t(...) abort
 	try
@@ -32,25 +33,36 @@ function! grizzly#complete_t(...) abort
 		let s:complete_t_winid = popup_create(s:complete_t_cache['items'], {})
 		call s:setoptions(s:complete_t_winid)
 	catch
-		echo v:throwpoint
-		echo v:exception
+		echoerr v:throwpoint
+		echoerr v:exception
 	endtry
 endfunction
 
-function! grizzly#complete() abort
+function! grizzly#complete_next() abort
+	call s:complete(v:false)
+endfunction
+
+function! grizzly#complete_prev() abort
+	call s:complete(v:true)
+endfunction
+
+function! s:complete(bot) abort
 	if get(g:, 'grizzly_disable', v:false)
 		return
 	endif
 	let input = s:prompt_input(term_getline(bufnr(), '.'))
 	let items = s:cmdprompt_suggestions(input)
 	if 0 < len(items)
-		call s:settermline(-1, items[0])
+		call s:settermline(-1, items[(a:bot ? -1 : 0)])
 		if 1 < len(items)
 			let s:complete_winid = popup_menu(items, {
 				\ 'filter' : function('s:filter'),
 				\ 'callback' : function('s:callback'),
 				\ })
 			call s:setoptions(s:complete_winid)
+			if a:bot
+				call s:setcursor(s:complete_winid, line('$', s:complete_winid))
+			endif
 		endif
 	endif
 endfunction
@@ -95,9 +107,8 @@ endfunction
 
 function! s:cmdprompt_suggestions(input) abort
 	let lines = []
-	let path = expand(get(g:, 'grizzly_history', '~/.grizzly_history'))
-	if filereadable(path)
-		let lines += readfile(path)
+	if filereadable(expand(g:grizzly_history))
+		let lines += readfile(expand(g:grizzly_history))
 	endif
 	let lines += map(getbufline(bufnr(), 1, line('$') - 1)
 		\ + map(range(1, line('$') - 1), { i,x -> term_getline(bufnr(), x) })
@@ -110,8 +121,8 @@ function! s:cmdprompt_suggestions(input) abort
 		endfor
 	endfor
 	call filter(lines, { i,x -> !empty(x) })
-	call writefile(lines, path)
-	call filter(lines, { i,x -> (x =~# a:input) && (x != a:input) })
+	call writefile(lines, expand(g:grizzly_history))
+	call filter(lines, { i,x -> (-1 != stridx(x, a:input)) && (x != a:input) })
 	return lines
 endfunction
 
