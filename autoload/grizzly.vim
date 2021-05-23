@@ -34,7 +34,11 @@ function! s:complete_t(...) abort
 	if &buftype != 'terminal'
 		return
 	endif
-	let input = s:prompt_input(term_getline(bufnr(), '.'))
+	let xs = s:prompt_input(term_getline(bufnr(), '.'))
+	if empty(xs)
+		return
+	endif
+	let input = xs[0]
 	if empty(input)
 		let items = s:cmdprompt_suggestions(input)
 	elseif s:complete_t_cache['key'] != input
@@ -57,7 +61,7 @@ function! s:complete(bot) abort
 	if get(g:, 'grizzly_disable', v:false)
 		return
 	endif
-	let input = s:prompt_input(term_getline(bufnr(), '.'))
+	let input = get(s:prompt_input(term_getline(bufnr(), '.')), 0, '')
 	let items = s:cmdprompt_suggestions(input)
 	if 0 < len(items)
 		call s:settermline(-1, items[(a:bot ? -1 : 0)])
@@ -109,7 +113,11 @@ function! s:prompt_length() abort
 endfunction
 
 function! s:prompt_input(line) abort
-	return trim(matchstr(a:line, s:prompt_pattern()))
+	if a:line =~# s:prompt_pattern()
+		return [trim(matchstr(a:line, s:prompt_pattern()))]
+	else
+		return []
+	endif
 endfunction
 
 function! s:cmdprompt_suggestions(input) abort
@@ -120,7 +128,7 @@ function! s:cmdprompt_suggestions(input) abort
 
 	let lines = getbufline(bufnr(), 1, line('$') - 1)
 		\ + map(range(1, line('$') - 1), { i,x -> term_getline(bufnr(), x) })
-	call map(lines, { i, x -> s:prompt_input(x) })
+	call map(lines, { i, x -> get(s:prompt_input(x), 0, '') })
 	if -1 == index(caches, a:input)
 		call filter(lines, { i,x -> (x != a:input) })
 	endif
