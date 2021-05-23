@@ -15,6 +15,7 @@ endfunction
 function! grizzly#reset_timer() abort
 	if exists('s:timer')
 		call timer_stop(s:timer)
+		unlet s:timer
 	endif
 	if !empty(term_list())
 		let s:timer = timer_start(500, function('s:complete_t'), { 'repeat': -1 })
@@ -22,37 +23,34 @@ function! grizzly#reset_timer() abort
 endfunction
 
 function! s:complete_t(...) abort
-	try
-		if get(g:, 'grizzly_disable', v:false)
-			return
-		endif
-		call popup_close(s:complete_t_winid)
-		let s:complete_t_winid = -1
-		if -1 != s:complete_winid
-			return
-		endif
-		if &buftype != 'terminal'
-			return
-		endif
-		let input = s:prompt_input(term_getline(bufnr(), '.'))
-		if empty(input)
-			return
-		endif
-		if s:complete_t_cache['key'] != input
-			let s:complete_t_cache['key'] = input
-			let s:complete_t_cache['items'] = s:cmdprompt_suggestions(input)
-		endif
-		if len(s:complete_t_cache['items']) < 1
-			return
-		elseif (len(s:complete_t_cache['items']) == 1) && (s:complete_t_cache['items'][0] == input)
-			return
-		endif
-		let s:complete_t_winid = popup_create(s:complete_t_cache['items'], {})
-		call s:setoptions(s:complete_t_winid)
-	catch
-		echoerr v:throwpoint
-		echoerr v:exception
-	endtry
+	if get(g:, 'grizzly_disable', v:false)
+		return
+	endif
+	call popup_close(s:complete_t_winid)
+	let s:complete_t_winid = -1
+	if -1 != s:complete_winid
+		return
+	endif
+	if &buftype != 'terminal'
+		return
+	endif
+	let input = s:prompt_input(term_getline(bufnr(), '.'))
+	if empty(input)
+		let items = s:cmdprompt_suggestions(input)
+	elseif s:complete_t_cache['key'] != input
+		let items = s:cmdprompt_suggestions(input)
+		let s:complete_t_cache['key'] = input
+		let s:complete_t_cache['items'] = items
+	else
+		let items = s:complete_t_cache['items']
+	endif
+	if len(items) < 1
+		return
+	elseif (len(items) == 1) && (items[0] == input)
+		return
+	endif
+	let s:complete_t_winid = popup_create(items, {})
+	call s:setoptions(s:complete_t_winid)
 endfunction
 
 function! s:complete(bot) abort
