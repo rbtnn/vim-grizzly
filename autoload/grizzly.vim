@@ -22,6 +22,13 @@ function! grizzly#reset_timer() abort
 	endif
 endfunction
 
+function! grizzly#close_popupwin() abort
+	call popup_close(s:complete_t_winid)
+	let s:complete_t_winid = -1
+	call popup_close(s:complete_winid)
+	let s:complete_winid = -1
+endfunction
+
 function! s:complete_t(...) abort
 	if get(g:, 'grizzly_disable', v:false)
 		return
@@ -108,8 +115,8 @@ endfunction
 
 function! s:prompt_length() abort
 	let line = term_getline(bufnr(), '.')
-	let n = len(matchstr(line, s:prompt_pattern()))
-	return len(line) - n
+	let prompt = matchstr(line, s:prompt_pattern())
+	return strdisplaywidth(line) - strdisplaywidth(prompt)
 endfunction
 
 function! s:prompt_input(line) abort
@@ -215,6 +222,7 @@ func s:filter(winid, key)
 endfunction
 
 func s:callback(winid, key)
+	let s:complete_t_winid = -1
 	let s:complete_winid = -1
 endfunction
 
