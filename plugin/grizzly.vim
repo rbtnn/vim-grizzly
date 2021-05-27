@@ -12,7 +12,7 @@ endif
 
 augroup grizzly
 	autocmd!
-	autocmd TerminalOpen * :call grizzly#reset_timer()
-	autocmd WinLeave     * :call grizzly#close_popupwin()
+	autocmd TerminalOpen,WinEnter * :call grizzly#reset_timer()
+	autocmd WinLeave     *          :call grizzly#close_popupwins()
 augroup END
 

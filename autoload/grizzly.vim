@@ -1,7 +1,7 @@
 
 let s:complete_winid = get(s:, 'complete_winid', -1)
-let s:complete_t_winid = get(s:, 'complete_t_winid', -1)
-let s:complete_t_cache = get(s:, 'complete_t_cache', { 'key' : '', 'items' : [], })
+let s:complete_t_winids = get(s:, 'complete_t_winids', [])
+"let s:complete_t_cache = get(s:, 'complete_t_cache', { 'items' : [], 'time' : -1, })
 let g:grizzly_history = get(g:, 'grizzly_history', '~/.grizzly_history')
 
 function! grizzly#complete_next() abort
@@ -22,10 +22,22 @@ function! grizzly#reset_timer() abort
 	endif
 endfunction
 
-function! grizzly#close_popupwin() abort
-	call popup_close(s:complete_t_winid)
-	let s:complete_t_winid = -1
-	call popup_close(s:complete_winid)
+function! grizzly#close_popupwins() abort
+	call s:close_complete_t_winids()
+	call s:close_complete_winid(v:true)
+endfunction
+
+function! s:close_complete_t_winids() abort
+	for id in s:complete_t_winids
+		call popup_close(id)
+	endfor
+	let s:complete_t_winids = []
+endfunction
+
+function! s:close_complete_winid(do_closing) abort
+	if a:do_closing
+		call popup_close(s:complete_winid)
+	endif
 	let s:complete_winid = -1
 endfunction
 
@@ -33,35 +45,45 @@ function! s:complete_t(...) abort
 	if get(g:, 'grizzly_disable', v:false)
 		return
 	endif
-	call popup_close(s:complete_t_winid)
-	let s:complete_t_winid = -1
+
 	if -1 != s:complete_winid
+		call s:close_complete_t_winids()
 		return
 	endif
+
+	" Display when Terminal-Job mode only.
+	if 't' != mode(1)
+		call s:close_complete_t_winids()
+		return
+	endif
+
 	if &buftype != 'terminal'
+		call s:close_complete_t_winids()
 		return
 	endif
+
 	let xs = s:prompt_input(term_getline(bufnr(), '.'))
 	if empty(xs)
 		return
 	endif
 	let input = xs[0]
-	if empty(input)
-		let items = s:cmdprompt_suggestions(input)
-	elseif s:complete_t_cache['key'] != input
-		let items = s:cmdprompt_suggestions(input)
-		let s:complete_t_cache['key'] = input
-		let s:complete_t_cache['items'] = items
-	else
-		let items = s:complete_t_cache['items']
-	endif
+
+	"if (localtime() - s:complete_t_cache['time'] < 3) && (s:complete_t_cache['time'] != -1)
+	"	return
+	"else
+	"	let s:complete_t_cache['time'] = localtime()
+	"endif
+
+	let items = s:cmdprompt_suggestions(input, v:false)
+
+	call s:close_complete_t_winids()
 	if len(items) < 1
 		return
 	elseif (len(items) == 1) && (items[0] == input)
 		return
 	endif
-	let s:complete_t_winid = popup_create(items, {})
-	call s:setoptions(s:complete_t_winid)
+	let s:complete_t_winids += [popup_create(items, {})]
+	call s:setoptions(s:complete_t_winids[-1])
 endfunction
 
 function! s:complete(bot) abort
@@ -69,7 +91,7 @@ function! s:complete(bot) abort
 		return
 	endif
 	let input = get(s:prompt_input(term_getline(bufnr(), '.')), 0, '')
-	let items = s:cmdprompt_suggestions(input)
+	let items = s:cmdprompt_suggestions(input, v:false)
 	if 0 < len(items)
 		call s:settermline(-1, items[(a:bot ? -1 : 0)])
 		if 1 < len(items)
@@ -103,6 +125,7 @@ function! s:setoptions(winid) abort
 		\ 'maxheight' : height,
 		\ 'border' : [ 0, 0, 0, 0],
 		\ 'padding' : [ 0, 1, 0, 1],
+		\ 'wrap' : v:false,
 		\ 'pos' : 'topleft',
 		\ 'line' : line,
 		\ 'col' : col,
@@ -127,7 +150,10 @@ function! s:prompt_input(line) abort
 	endif
 endfunction
 
-function! s:cmdprompt_suggestions(input) abort
+function! s:cmdprompt_suggestions(input, use_cache) abort
+	"if a:use_cache && has_key(s:complete_t_cache, 'items')
+	"	let merge_lines = s:complete_t_cache['items']
+	"else
 	let caches = []
 	if filereadable(expand(g:grizzly_history))
 		let caches = readfile(expand(g:grizzly_history))
@@ -148,6 +174,9 @@ function! s:cmdprompt_suggestions(input) abort
 			endif
 		endfor
 	endfor
+
+	"	let s:complete_t_cache['items'] = merge_lines
+	"endif
 
 	call filter(merge_lines, { i,x -> !empty(x) && (x !~# '^cd ') })
 	call writefile(merge_lines, expand(g:grizzly_history))
@@ -222,7 +251,7 @@ func s:filter(winid, key)
 endfunction
 
 func s:callback(winid, key)
-	let s:complete_t_winid = -1
-	let s:complete_winid = -1
+	call s:close_complete_t_winids()
+	call s:close_complete_winid(v:false)
 endfunction
 
