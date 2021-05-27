@@ -1,7 +1,7 @@
 
 let s:complete_winid = get(s:, 'complete_winid', -1)
 let s:complete_t_winids = get(s:, 'complete_t_winids', [])
-"let s:complete_t_cache = get(s:, 'complete_t_cache', { 'items' : [], 'time' : -1, })
+let s:complete_t_cache = get(s:, 'complete_t_cache', {})
 let g:grizzly_history = get(g:, 'grizzly_history', '~/.grizzly_history')
 
 function! grizzly#complete_next() abort
@@ -68,13 +68,7 @@ function! s:complete_t(...) abort
 	endif
 	let input = xs[0]
 
-	"if (localtime() - s:complete_t_cache['time'] < 3) && (s:complete_t_cache['time'] != -1)
-	"	return
-	"else
-	"	let s:complete_t_cache['time'] = localtime()
-	"endif
-
-	let items = s:cmdprompt_suggestions(input, v:false)
+	let items = s:cmdprompt_suggestions(input)
 
 	call s:close_complete_t_winids()
 	if len(items) < 1
@@ -91,7 +85,7 @@ function! s:complete(bot) abort
 		return
 	endif
 	let input = get(s:prompt_input(term_getline(bufnr(), '.')), 0, '')
-	let items = s:cmdprompt_suggestions(input, v:false)
+	let items = s:cmdprompt_suggestions(input)
 	if 0 < len(items)
 		call s:settermline(-1, items[(a:bot ? -1 : 0)])
 		if 1 < len(items)
@@ -113,6 +107,9 @@ function! s:setoptions(winid) abort
 	let col = winpos[1] - 1 + s:prompt_length()
 	let line = winpos[0] + curpos[0]
 	let height = winheight(a:winid)
+	if (0 < &pumheight) && (&pumheight < winheight(a:winid))
+		let height = &pumheight
+	endif
 	if &lines < line + height
 		let line -= height + 1
 		if line < 0
@@ -150,42 +147,47 @@ function! s:prompt_input(line) abort
 	endif
 endfunction
 
-function! s:cmdprompt_suggestions(input, use_cache) abort
-	"if a:use_cache && has_key(s:complete_t_cache, 'items')
-	"	let merge_lines = s:complete_t_cache['items']
-	"else
-	let caches = []
-	if filereadable(expand(g:grizzly_history))
-		let caches = readfile(expand(g:grizzly_history))
-	endif
+function! s:cmdprompt_suggestions(input) abort
+	let linecount = get(get(filter(getbufinfo(), { i,x -> x['bufnr'] == bufnr() }), 0, {}), 'linecount', 1)
+	let use_cache =
+		\ (get(s:complete_t_cache, 'linecount', 1) == linecount)
+		\ &&
+		\ (get(s:complete_t_cache, 'bufnr', 1) == bufnr())
+	let s:complete_t_cache['linecount'] = linecount
+	let s:complete_t_cache['bufnr'] = bufnr()
 
-	let lines = getbufline(bufnr(), 1, line('$') - 1)
-		\ + map(range(1, line('$') - 1), { i,x -> term_getline(bufnr(), x) })
-	call map(lines, { i, x -> get(s:prompt_input(x), 0, '') })
-	if -1 == index(caches, a:input)
-		call filter(lines, { i,x -> (x != a:input) })
-	endif
-
-	let merge_lines = caches + lines
-	for j in range(len(merge_lines) - 1, 0, -1)
-		for k in range(j - 1, 0, -1)
-			if merge_lines[j] == merge_lines[k]
-				let merge_lines[k] = ''
-			endif
+	if use_cache
+		let merge_lines = deepcopy(get(s:complete_t_cache, 'merge_lines', []))
+	else
+		let lines1 = []
+		if filereadable(expand(g:grizzly_history))
+			let lines1 = readfile(expand(g:grizzly_history))
+		endif
+		let lines2 = getbufline(bufnr(), 1, linecount - 1)
+		call filter(map(lines2, { i, x -> get(s:prompt_input(x), 0, '') }), { i,x -> !empty(x) })
+		let merge_lines = lines1 + lines2
+		for j in range(len(merge_lines) - 1, 0, -1)
+			for k in range(j - 1, 0, -1)
+				if merge_lines[j] == merge_lines[k]
+					let merge_lines[k] = ''
+				endif
+			endfor
 		endfor
-	endfor
+		call filter(merge_lines, { i,x -> !empty(x) && (x !~# '^cd ') })
+		let s:complete_t_cache['merge_lines'] = merge_lines
+	endif
 
-	"	let s:complete_t_cache['items'] = merge_lines
-	"endif
-
-	call filter(merge_lines, { i,x -> !empty(x) && (x !~# '^cd ') })
-	call writefile(merge_lines, expand(g:grizzly_history))
+	if !use_cache
+		call writefile(merge_lines, expand(g:grizzly_history))
+	endif
 	call filter(merge_lines, { i,x -> -1 != stridx(x, a:input) })
+
 	return merge_lines
 endfunction
 
 function! s:setcursor(winid, lnum) abort
 	call win_execute(a:winid, printf('call setpos(".", [0, %d, 1, 0])', a:lnum))
+	call win_execute(a:winid, 'redraw')
 endfunction
 
 function! s:settermline(winid, line) abort
