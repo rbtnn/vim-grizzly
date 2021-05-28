@@ -247,7 +247,8 @@ func s:filter(winid, key)
 
 	else
 		call popup_close(a:winid)
-		return 0
+		call feedkeys(a:key, '')
+		return 1
 
 	endif
 endfunction
