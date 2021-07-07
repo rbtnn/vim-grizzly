@@ -32,7 +32,9 @@ function! s:close_complete_t_winids() abort
 		call popup_close(id)
 	endfor
 	let s:complete_t_winids = []
-	redraw
+	if 'c' != mode(1)
+		redraw
+	endif
 endfunction
 
 function! s:close_complete_winid(do_closing) abort
@@ -40,7 +42,9 @@ function! s:close_complete_winid(do_closing) abort
 		call popup_close(s:complete_winid)
 	endif
 	let s:complete_winid = -1
-	redraw
+	if 'c' != mode(1)
+		redraw
+	endif
 endfunction
 
 function! s:complete_t(...) abort
