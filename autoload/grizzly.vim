@@ -76,13 +76,19 @@ function! s:complete_t(...) abort
 
 	let items = s:cmdprompt_suggestions(input)
 
-	call s:close_complete_t_winids()
-	if len(items) < 1
+	if len(items) == 0
+		call s:close_complete_t_winids()
 		return
 	elseif (len(items) == 1) && (items[0] == input)
+		call s:close_complete_t_winids()
 		return
 	endif
-	let s:complete_t_winids += [popup_create(items, {})]
+
+	if empty(s:complete_t_winids)
+		let s:complete_t_winids += [popup_create([], {})]
+	endif
+
+	call popup_settext(s:complete_t_winids[-1], items)
 	call s:setoptions(s:complete_t_winids[-1])
 endfunction
 
@@ -110,29 +116,37 @@ endfunction
 function! s:setoptions(winid) abort
 	let curpos = term_getcursor(bufnr())
 	let winpos = win_screenpos(winnr())
-	let col = winpos[1] - 1 + s:prompt_length()
-	let line = winpos[0] + curpos[0]
-	let height = winheight(a:winid)
-	if (0 < &pumheight) && (&pumheight < winheight(a:winid))
-		let height = &pumheight
-	endif
-	if &lines < line + height
-		let line -= height + 1
-		if line < 0
-			let height += line - 1
-			let line = 1
+	let n = len(getbufline(winbufnr(a:winid), 1, '$'))
+	if (0 < n) && (3 == len(curpos)) && (2 == len(winpos))
+		let col = winpos[1] - 1 + s:prompt_length()
+		let line = winpos[0] + curpos[0]
+		let maxheight = n
+		let minheight = n
+		if 0 < &pumheight
+			if &pumheight < n
+				let maxheight = &pumheight
+				let minheight = &pumheight
+			endif
 		endif
+		if &lines < line + maxheight
+			let line -= maxheight + 1
+			if line < 0
+				let maxheight += line - 1
+				let line = 1
+			endif
+		endif
+		call popup_setoptions(a:winid, {
+			\ 'minwidth' : &pumwidth,
+			\ 'minheight' : minheight,
+			\ 'maxheight' : maxheight,
+			\ 'border' : [ 0, 0, 0, 0],
+			\ 'padding' : [ 0, 1, 0, 1],
+			\ 'wrap' : v:false,
+			\ 'pos' : 'topleft',
+			\ 'line' : line,
+			\ 'col' : col,
+			\ })
 	endif
-	call popup_setoptions(a:winid, {
-		\ 'minwidth' : &pumwidth,
-		\ 'maxheight' : height,
-		\ 'border' : [ 0, 0, 0, 0],
-		\ 'padding' : [ 0, 1, 0, 1],
-		\ 'wrap' : v:false,
-		\ 'pos' : 'topleft',
-		\ 'line' : line,
-		\ 'col' : col,
-		\ })
 endfunction
 
 function! s:prompt_pattern() abort
@@ -179,7 +193,7 @@ function! s:cmdprompt_suggestions(input) abort
 				endif
 			endfor
 		endfor
-		call filter(merge_lines, { i,x -> !empty(x) && (x !~# '^cd ') })
+		call filter(merge_lines, { i,x -> !empty(x) && ((x !~# '^cd ') || (x == 'cd ..')) })
 		let s:complete_t_cache['merge_lines'] = merge_lines
 	endif
 
