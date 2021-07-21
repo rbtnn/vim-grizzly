@@ -70,6 +70,7 @@ function! s:complete_t(...) abort
 
 	let xs = s:prompt_input(term_getline(bufnr(), '.'))
 	if empty(xs)
+		call s:close_complete_t_winids()
 		return
 	endif
 	let input = xs[0]
