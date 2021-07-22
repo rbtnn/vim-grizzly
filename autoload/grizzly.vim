@@ -52,6 +52,11 @@ function! s:complete_t(...) abort
 		return
 	endif
 
+	" Never redraw the screen showing more-prompt.
+	if mode(1) =~# '^r'
+		return
+	endif
+
 	if -1 != s:complete_winid
 		call s:close_complete_t_winids()
 		return
