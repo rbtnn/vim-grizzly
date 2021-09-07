@@ -237,6 +237,7 @@ endfunction
 
 func s:filter(winid, key)
 	let n = char2nr(a:key)
+	echo printf('%x', n)
 	let lines = getbufline(winbufnr(a:winid), 1, '$')
 
 	if n == 27
@@ -255,7 +256,7 @@ func s:filter(winid, key)
 		call popup_close(a:winid)
 		return popup_filter_menu(a:winid, "\<Cr>")
 
-	elseif (n == 9) || (n == 14)
+	elseif n == 14
 		" Ctrl-n
 		if len(lines) <= line('.', a:winid)
 			return s:xxx(a:winid, lines, 0)
@@ -263,13 +264,19 @@ func s:filter(winid, key)
 			return s:xxx(a:winid, lines, line('.', a:winid))
 		endif
 
-	elseif (n == 128) || (n == 16)
+	elseif n == 16
 		" Ctrl-p
 		if 1 == line('.', a:winid)
 			return s:xxx(a:winid, lines, len(lines) - 1)
 		else
 			return s:xxx(a:winid, lines, line('.', a:winid) - 2)
 		endif
+
+	elseif (n == 128) || (n == 9)
+		" If you move the mouse cursor in popup_menu(),
+		" this function is reserved Down key or Up key.
+		" Thus those are ignored.
+		return 1
 
 	else
 		call popup_close(a:winid)
