@@ -161,6 +161,9 @@ endfunction
 
 function! s:prompt_length() abort
 	let line = term_getline(bufnr(), '.')
+	if 'utf-8' != &encoding
+		let line = iconv(line, 'utf-8', &encoding)
+	endif
 	let prompt = matchstr(line, s:prompt_pattern())
 	return strdisplaywidth(line) - strdisplaywidth(prompt)
 endfunction
