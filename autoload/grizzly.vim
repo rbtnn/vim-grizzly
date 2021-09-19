@@ -1,4 +1,5 @@
 
+let s:cmdpropt_cmds = ['dir', 'cd', 'copy', 'move', 'set', 'rmdir', 'mkdir', 'exit', 'echo', 'call', 'cls']
 let s:complete_winid = get(s:, 'complete_winid', -1)
 let s:complete_t_winids = get(s:, 'complete_t_winids', [])
 let s:complete_t_cache = get(s:, 'complete_t_cache', {})
@@ -186,32 +187,43 @@ function! s:cmdprompt_suggestions(input) abort
 	let s:complete_t_cache['bufnr'] = bufnr()
 
 	if use_cache
-		let merge_lines = deepcopy(get(s:complete_t_cache, 'merge_lines', []))
+		let lines = deepcopy(get(s:complete_t_cache, 'lines', []))
 	else
-		let lines1 = []
+		let lines = []
 		if filereadable(expand(g:grizzly_history))
-			let lines1 = readfile(expand(g:grizzly_history))
+			for line in readfile(expand(g:grizzly_history))
+				if s:is_completable(line)
+					let lines += [line]
+				endif
+			endfor
 		endif
-		let lines2 = getbufline(bufnr(), 1, linecount - 1)
-		call filter(map(lines2, { i, x -> get(s:prompt_input(x), 0, '') }), { i,x -> !empty(x) })
-		let merge_lines = lines1 + lines2
-		for j in range(len(merge_lines) - 1, 0, -1)
+		for line in filter(map(getbufline(bufnr(), 1, linecount - 1), { i, x -> get(s:prompt_input(x), 0, '') }), { i,x -> !empty(x) })
+			if s:is_completable(line)
+				let lines += [line]
+			endif
+		endfor
+		for j in range(len(lines) - 1, 0, -1)
 			for k in range(j - 1, 0, -1)
-				if merge_lines[j] == merge_lines[k]
-					let merge_lines[k] = ''
+				if lines[j] == lines[k]
+					let lines[k] = ''
 				endif
 			endfor
 		endfor
-		call filter(merge_lines, { i,x -> !empty(x) && ((x !~# '^cd ') || (x == 'cd ..')) })
-		let s:complete_t_cache['merge_lines'] = merge_lines
+		call filter(lines, { i,x -> !empty(x) && ((x !~# '^cd ') || (x == 'cd ..')) })
+		let s:complete_t_cache['lines'] = lines
 	endif
 
 	if !use_cache
-		call writefile(merge_lines, expand(g:grizzly_history))
+		call writefile(lines, expand(g:grizzly_history))
 	endif
-	call filter(merge_lines, { i,x -> -1 != stridx(x, a:input) })
+	call filter(lines, { i,x -> -1 != stridx(x, a:input) })
 
-	return merge_lines
+	return lines
+endfunction
+
+function! s:is_completable(line)
+	let cmd = tolower(get(split(a:line, '\s'), 0, ''))
+	return executable(cmd) || (-1 != index(s:cmdpropt_cmds, cmd))
 endfunction
 
 function! s:setcursor(winid, lnum) abort
