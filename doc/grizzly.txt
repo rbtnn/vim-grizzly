@@ -23,7 +23,7 @@ Variables                                                   *grizzly-variables*
 *g:grizzly_disable*
 	(default: `v:false`)
 
-*g:grizzlydisable_default_mappings*
+*g:grizzly_disable_default_mappings*
 	default: `v:false`)
 
 
