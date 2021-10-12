@@ -5,7 +5,7 @@ LICENSE: MIT license (see LICENSE.txt)
 
 CONTENTS                                                     *grizzly-contents*
 
-Variables                |naer-variables|
+Variables                |grizzly-variables|
 
 
 
