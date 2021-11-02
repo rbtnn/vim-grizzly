@@ -289,7 +289,7 @@ func s:filter(winid, key)
 
 	elseif (n == 128) || (n == 9)
 		" If you move the mouse cursor in popup_menu(),
-		" this function is reserved Down key or Up key.
+		" this function receives Down key or Up key.
 		" Thus those are ignored.
 		return 1
 
