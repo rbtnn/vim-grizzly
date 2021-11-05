@@ -3,7 +3,14 @@ let s:cmdpropt_cmds = ['dir', 'cd', 'copy', 'move', 'set', 'rmdir', 'mkdir', 'ex
 let s:complete_winid = get(s:, 'complete_winid', -1)
 let s:complete_t_winids = get(s:, 'complete_t_winids', [])
 let s:complete_t_cache = get(s:, 'complete_t_cache', {})
-let g:grizzly_history = get(g:, 'grizzly_history', '~/.grizzly_history')
+
+function! grizzly#init() abort
+	let g:grizzly_disable_default_mappings = get(g:, 'grizzly_disable_default_mappings', v:false)
+	let g:grizzly_prompt_pattern = get(g:, 'grizzly_prompt_pattern', has('win32') ? '^[A-Z]:\\.*>\zs.*' : '^[\$#]\zs.*')
+	let g:grizzly_history = get(g:, 'grizzly_history', '~/.grizzly_history')
+	let g:grizzly_update_time = get(g:, 'grizzly_update_time', &updatetime)
+	let g:grizzly_disable = get(g:, 'grizzly_disable', v:false)
+endfunction
 
 function! grizzly#complete_next() abort
 	call s:complete(v:false)
@@ -19,7 +26,7 @@ function! grizzly#reset_timer() abort
 		unlet s:timer
 	endif
 	if !empty(term_list())
-		let s:timer = timer_start(500, function('s:complete_t'), { 'repeat': -1 })
+		let s:timer = timer_start(g:grizzly_update_time, function('s:complete_t'), { 'repeat': -1 })
 	endif
 endfunction
 
@@ -49,7 +56,7 @@ function! s:close_complete_winid(do_closing) abort
 endfunction
 
 function! s:complete_t(...) abort
-	if get(g:, 'grizzly_disable', v:false)
+	if g:grizzly_disable
 		return
 	endif
 
@@ -100,7 +107,7 @@ function! s:complete_t(...) abort
 endfunction
 
 function! s:complete(bot) abort
-	if get(g:, 'grizzly_disable', v:false)
+	if g:grizzly_disable
 		return
 	endif
 	let input = get(s:prompt_input(term_getline(bufnr(), '.')), 0, '')
@@ -157,7 +164,7 @@ function! s:setoptions(winid) abort
 endfunction
 
 function! s:prompt_pattern() abort
-	return get(g:, 'grizzly_prompt_pattern', has('win32') ? '^[A-Z]:\\.*>\zs.*' : '^[\$#]\zs.*')
+	return 
 endfunction
 
 function! s:prompt_length() abort
@@ -165,13 +172,13 @@ function! s:prompt_length() abort
 	if 'utf-8' != &encoding
 		let line = iconv(line, 'utf-8', &encoding)
 	endif
-	let prompt = matchstr(line, s:prompt_pattern())
+	let prompt = matchstr(line, g:grizzly_prompt_pattern)
 	return strdisplaywidth(line) - strdisplaywidth(prompt)
 endfunction
 
 function! s:prompt_input(line) abort
-	if a:line =~# s:prompt_pattern()
-		return [trim(matchstr(a:line, s:prompt_pattern()))]
+	if a:line =~# g:grizzly_prompt_pattern
+		return [trim(matchstr(a:line, g:grizzly_prompt_pattern))]
 	else
 		return []
 	endif
